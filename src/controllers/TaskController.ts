@@ -53,6 +53,7 @@ export const deleteTasks = async (req: Request, res: Response): Promise<void> =>
         console.log(req.body); // Debugging
 
         const { ids } = req.body;
+        const userId = (req as any).user?.id; // JWT'dan kullanıcı id'sini al
 
         // IDs kontrolü
         if (!Array.isArray(ids) || ids.length === 0) {
@@ -63,8 +64,19 @@ export const deleteTasks = async (req: Request, res: Response): Promise<void> =>
             return;
         }
 
+        // Kullanıcının silme yetkisini kontrol et
+        const tasks = await Task.find({ id: { $in: ids }, userId });
+
+        if (tasks.length !== ids.length) {
+            res.status(403).json({
+                data: null,
+                error: 'You can only delete your own tasks'
+            });
+            return;
+        }
+
         // Görevleri sil
-        const result = await Task.deleteMany({ id: { $in: ids } });
+        const result = await Task.deleteMany({ id: { $in: ids }, userId });
 
         if (result.deletedCount === 0) {
             res.status(404).json({
